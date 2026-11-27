@@ -16,7 +16,8 @@ jobs:
       - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          # Añadimos el soporte para 32 bits (armv7)
+          targets: aarch64-linux-android, armv7-linux-androideabi
 
       - name: Configurar NDK
         run: |
@@ -37,20 +38,29 @@ jobs:
       - name: Descargar dependencias
         run: flutter pub get
 
-      - name: Compilar Rust
+      - name: Compilar Rust (64 y 32 bits)
         run: |
           cd rust_brain
-          cargo ndk -t arm64-v8a build --release
+          # Compilamos para arm64-v8a (64 bits) y armeabi-v7a (32 bits)
+          cargo ndk -t arm64-v8a -t armeabi-v7a build --release
 
-      - name: Copiar Cerebro a Android (Ruta exacta)
+      - name: Copiar Cerebro a Android
         run: |
+          # Carpeta 64 bits
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
           cp rust_brain/target/aarch64-linux-android/release/librust_brain.so android/app/src/main/jniLibs/arm64-v8a/
-          echo "Verificando que el archivo está ahí:"
+          
+          # Carpeta 32 bits
+          mkdir -p android/app/src/main/jniLibs/armeabi-v7a
+          cp rust_brain/target/armv7-linux-androideabi/release/librust_brain.so android/app/src/main/jniLibs/armeabi-v7a/
+          
+          echo "Verificando archivos:"
           ls -la android/app/src/main/jniLibs/arm64-v8a/
+          ls -la android/app/src/main/jniLibs/armeabi-v7a/
 
-      - name: Compilar APK Final (Forzando arquitectura de 64 bits)
-        run: flutter build apk --release --target-platform android-arm64
+      - name: Compilar APK Final
+        # Quitamos la restricción de 64 bits para que empaquete todo
+        run: flutter build apk --release
         
       - name: Guardar APK
         uses: actions/upload-artifact@v4
