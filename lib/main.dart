@@ -2,7 +2,6 @@ import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-// 1. Definimos la función de Rust
 typedef SaludarFunc = Pointer<Uint8> Function();
 typedef Saludar = Pointer<Uint8> Function();
 
@@ -22,7 +21,14 @@ class MiIAApp extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const CircularProgressIndicator();
               }
-              return Text(snapshot.data ?? 'Error', style: const TextStyle(fontSize: 24));
+              return Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  snapshot.data ?? 'Error', 
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              );
             },
           ),
         ),
