@@ -12,15 +12,15 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
- - name: Instalar herramientas C++ (para la IA)
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y cmake clang libclang-dev
+
+      - name: Instalar herramientas C++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang libclang-dev
 
       - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Añadimos el soporte para 32 bits (armv7)
           targets: aarch64-linux-android, armv7-linux-androideabi
 
       - name: Configurar NDK
@@ -45,16 +45,13 @@ jobs:
       - name: Compilar Rust (64 y 32 bits)
         run: |
           cd rust_brain
-          # Compilamos para arm64-v8a (64 bits) y armeabi-v7a (32 bits)
           cargo ndk -t arm64-v8a -t armeabi-v7a build --release
 
       - name: Copiar Cerebro a Android
         run: |
-          # Carpeta 64 bits
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
           cp rust_brain/target/aarch64-linux-android/release/librust_brain.so android/app/src/main/jniLibs/arm64-v8a/
           
-          # Carpeta 32 bits
           mkdir -p android/app/src/main/jniLibs/armeabi-v7a
           cp rust_brain/target/armv7-linux-androideabi/release/librust_brain.so android/app/src/main/jniLibs/armeabi-v7a/
           
@@ -63,7 +60,6 @@ jobs:
           ls -la android/app/src/main/jniLibs/armeabi-v7a/
 
       - name: Compilar APK Final
-        # Quitamos la restricción de 64 bits para que empaquete todo
         run: flutter build apk --release
         
       - name: Guardar APK
