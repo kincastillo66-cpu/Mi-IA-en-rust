@@ -1,4 +1,4 @@
-name: Compilar Cerebro Rust
+name: Crear APK de Android
 on: [push, workflow_dispatch]
 
 jobs:
@@ -6,7 +6,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Instalar Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Compilar Rust
-        run: cargo build --release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+      - run: flutter create .
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
