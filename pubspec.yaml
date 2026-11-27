@@ -1,7 +1,7 @@
 name: mi_ia_rust
 description: Mi IA con cerebro local
 publish_to: 'none'
-version: 0.4.0
+version: 0.5.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -9,9 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Versiones compatibles y existentes en pub.dev
-  flutter_edge_ai: ^2.6.0
-  flutter_edge_ai_litertlm: ^1.20.0
+  llama_flutter_android: ^0.2.6
   path_provider: ^2.1.2
   http: ^1.2.0
 
