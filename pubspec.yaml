@@ -9,9 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_edge_ai: ^2.0.0
-  flutter_edge_ai_litertlm: ^2.0.0
+  # Versiones compatibles y existentes en pub.dev
+  flutter_edge_ai: ^2.6.0
+  flutter_edge_ai_litertlm: ^1.20.0
   path_provider: ^2.1.2
+  http: ^1.2.0
 
 flutter:
   uses-material-design: true
