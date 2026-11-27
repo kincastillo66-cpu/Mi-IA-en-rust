@@ -1,0 +1,12 @@
+name: Compilar Cerebro Rust
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Compilar Rust
+        run: cargo build --release
