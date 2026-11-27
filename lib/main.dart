@@ -1,10 +1,11 @@
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:convert';
+import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 
-typedef SaludarFunc = Pointer<Uint8> Function();
-typedef Saludar = Pointer<Uint8> Function();
+// Definimos los tipos para recibir un puntero a texto (Utf8)
+typedef SaludarFunc = Pointer<Utf8> Function();
+typedef Saludar = Pointer<Utf8> Function();
 
 void main() => runApp(const MiIAApp());
 
@@ -41,9 +42,12 @@ class MiIAApp extends StatelessWidget {
 Future<String> _cargarSaludo() async {
   try {
     final lib = DynamicLibrary.open('librust_brain.so');
+    // Buscamos la función y le decimos a Dart que devuelve un Pointer<Utf8>
     final saludar = lib.lookupFunction<SaludarFunc, Saludar>('saludar_desde_rust');
     final puntero = saludar();
-    return puntero.cast<Utf8>().toDartString();
+    
+    // Ahora sí, toDartString() existe gracias al paquete ffi
+    return puntero.toDartString();
   } catch (e) {
     return 'Aún no conectado: $e';
   }
