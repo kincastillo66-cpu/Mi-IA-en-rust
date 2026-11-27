@@ -8,7 +8,6 @@ void main() => runApp(const MiIAApp());
 
 class MiIAApp extends StatelessWidget {
   const MiIAApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -28,7 +27,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  LlamaModel? _model;
+  LlamaEngine? _engine;
+  EngineChat? _chat;
   bool _isLoading = true;
   String _status = 'Iniciando motor...';
 
@@ -46,15 +46,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (!await file.exists()) {
         setState(() => _status = 'Descargando cerebro (350MB)...');
-        // Descarga el modelo Qwen 0.5B
         final url = Uri.parse('https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf');
         final response = await http.get(url);
         await file.writeAsBytes(response.bodyBytes);
       }
 
       setState(() => _status = 'Cargando cerebro en RAM...');
-      _model = LlamaModel(modelPath, nCtx: 1024, nThreads: 2); // 2 hilos para no colapsar el teléfono
-      
+      // La nueva API usa LlamaEngine.spawn
+      _engine = await LlamaEngine.spawn(
+        libraryPath: '', // Vacío para usar la librería incluida automáticamente en Android
+        modelPath: modelPath,
+      );
+      _chat = await _engine!.createChat();
+
       setState(() {
         _isLoading = false;
         _messages.add({'role': 'assistant', 'text': '¡Hola! Mi cerebro Qwen está listo. ¿De qué hablamos?'});
@@ -65,28 +69,31 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_textController.text.trim().isEmpty || _model == null) return;
+    if (_textController.text.trim().isEmpty || _chat == null) return;
 
     final userText = _textController.text;
     setState(() {
       _messages.add({'role': 'user', 'text': userText});
-      _messages.add({'role': 'assistant', 'text': 'Pensando...'});
+      _messages.add({'role': 'assistant', 'text': ''}); // Placeholder para el streaming
     });
     _textController.clear();
 
     try {
-      // Prompt básico para el modelo
-      final prompt = '<|im_start|>user\n$userText<|im_end|>\n<|im_start|>assistant\n';
-      final response = await _model!.generate(prompt, maxTokens: 150);
-      
-      setState(() {
-        _messages.removeLast();
-        _messages.add({'role': 'assistant', 'text': response});
-      });
+      _chat!.addUser(userText);
+      final buffer = StringBuffer();
+
+      // Escuchar el stream de generación
+      await for (final event in _chat!.generate(maxTokens: 150)) {
+        if (event is TokenEvent) {
+          buffer.write(event.text);
+          setState(() {
+            _messages.last['text'] = buffer.toString();
+          });
+        }
+      }
     } catch (e) {
       setState(() {
-        _messages.removeLast();
-        _messages.add({'role': 'assistant', 'text': 'Error al generar: $e'});
+        _messages.last['text'] = 'Error al generar: $e';
       });
     }
   }
