@@ -1,3 +1,4 @@
+
 name: Crear APK con Rust
 on: [push, workflow_dispatch]
 
@@ -26,20 +27,30 @@ jobs:
       - name: Instalar cargo-ndk
         run: cargo install cargo-ndk
 
-      - name: Compilar Rust para Android
-        run: |
-          cd rust_brain
-          cargo ndk -t arm64-v8a build --release
-
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.0'
 
-      - name: Compilar APK
+      - name: Preparar proyecto Flutter
+        run: flutter create . --project-name mi_ia_rust
+
+      - name: Descargar dependencias de Flutter
+        run: flutter pub get
+
+      - name: Compilar Rust
         run: |
-          flutter create . --project-name mi_ia_rust
-          flutter build apk --release
+          cd rust_brain
+          cargo ndk -t arm64-v8a build --release
+
+      - name: Copiar Cerebro a Android
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          # Busca el archivo .so sin importar en qué subcarpeta lo haya dejado Rust
+          find rust_brain/target -name "librust_brain.so" -exec cp {} android/app/src/main/jniLibs/arm64-v8a/ \;
+
+      - name: Compilar APK Final
+        run: flutter build apk --release
         
       - name: Guardar APK
         uses: actions/upload-artifact@v4
