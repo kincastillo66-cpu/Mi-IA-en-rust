@@ -18,7 +18,7 @@ jobs:
         with:
           targets: aarch64-linux-android
 
-      - name: Configurar NDK (usando el preinstalado en el runner)
+      - name: Configurar NDK
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> $GITHUB_ENV
           echo "$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
@@ -34,7 +34,7 @@ jobs:
       - name: Preparar proyecto Flutter
         run: flutter create . --project-name mi_ia_rust
 
-      - name: Descargar dependencias de Flutter
+      - name: Descargar dependencias
         run: flutter pub get
 
       - name: Compilar Rust
@@ -42,13 +42,15 @@ jobs:
           cd rust_brain
           cargo ndk -t arm64-v8a build --release
 
-      - name: Copiar Cerebro a Android
+      - name: Copiar Cerebro a Android (Ruta exacta)
         run: |
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
-          find rust_brain/target -name "librust_brain.so" -exec cp {} android/app/src/main/jniLibs/arm64-v8a/ \;
+          cp rust_brain/target/aarch64-linux-android/release/librust_brain.so android/app/src/main/jniLibs/arm64-v8a/
+          echo "Verificando que el archivo está ahí:"
+          ls -la android/app/src/main/jniLibs/arm64-v8a/
 
-      - name: Compilar APK Final
-        run: flutter build apk --release
+      - name: Compilar APK Final (Forzando arquitectura de 64 bits)
+        run: flutter build apk --release --target-platform android-arm64
         
       - name: Guardar APK
         uses: actions/upload-artifact@v4
