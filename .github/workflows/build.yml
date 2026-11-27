@@ -1,4 +1,4 @@
-name: Crear APK de Android
+name: Crear APK con Rust
 on: [push, workflow_dispatch]
 
 jobs:
@@ -6,19 +6,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Instalar NDK de Android
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Instalar cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Compilar Rust para Android
+        run: |
+          cd rust_brain
+          cargo ndk -t arm64-v8a build --release
+
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.0'
-      - name: Preparar proyecto Flutter
-        run: flutter create . --project-name mi_ia_rust
+
       - name: Compilar APK
-        run: flutter build apk --release
+        run: |
+          flutter create . --project-name mi_ia_rust
+          flutter build apk --release
+        
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
