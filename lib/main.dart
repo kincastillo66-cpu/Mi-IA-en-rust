@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_edge_ai/flutter_edge_ai.dart';
-import 'package:flutter_edge_ai_litertlm/flutter_edge_ai_litertlm.dart';
+import 'package:llama_flutter_android/llama_flutter_android.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(const MiIAApp());
 
@@ -25,7 +27,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  Chat? _chat;
+  final LlamaController _llamaController = LlamaController();
   bool _isLoading = true;
   String _status = 'Iniciando motor...';
 
@@ -37,30 +39,28 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initModel() async {
     try {
-      // 1. Inicializar Flutter Edge AI con el motor LiteRT-LM
-      await FlutterEdgeAi.initialize(
-        inferenceEngines: [LiteRtLmEngine()],
+      final dir = await getApplicationDocumentsDirectory();
+      final modelPath = '${dir.path}/qwen.gguf';
+      final file = File(modelPath);
+
+      if (!await file.exists()) {
+        setState(() => _status = 'Descargando cerebro (350MB)...');
+        final url = Uri.parse('https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf');
+        final response = await http.get(url);
+        await file.writeAsBytes(response.bodyBytes);
+      }
+
+      setState(() => _status = 'Cargando cerebro en RAM...');
+      // Se inicializa con 4 hilos para un buen rendimiento en 2GB de RAM
+      await _llamaController.loadModel(
+        modelPath: modelPath,
+        threads: 4,
+        contextSize: 2048,
       );
-
-      setState(() => _status = 'Descargando modelo Gemma 3 270M...');
-      
-      // 2. Instalar el modelo desde la red (solo la primera vez)
-      await FlutterEdgeAi.installModel(
-        modelType: ModelType.gemma3n, // Familia Gemma 3
-        fileType: ModelFileType.litertlm,
-      ).fromNetwork(
-        'https://huggingface.co/google/gemma-3-270m-it-litertlm/resolve/main/gemma-3-270m-it.litertlm'
-      ).install();
-
-      setState(() => _status = 'Cargando modelo en memoria...');
-      
-      // 3. Obtener el modelo activo y crear una sesión de chat
-      final model = await FlutterEdgeAi.getActiveModel(maxTokens: 512);
-      _chat = await model.createChat();
 
       setState(() {
         _isLoading = false;
-        _messages.add({'role': 'assistant', 'text': '¡Hola! Soy Gemma 3 270M, tu IA local. ¿En qué puedo ayudarte?'});
+        _messages.add({'role': 'assistant', 'text': '¡Hola! Mi cerebro Qwen está listo. ¿De qué hablamos?'});
       });
     } catch (e) {
       setState(() => _status = 'Error: $e');
@@ -68,29 +68,42 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_textController.text.trim().isEmpty || _chat == null) return;
+    if (_textController.text.trim().isEmpty) return;
 
     final userText = _textController.text;
     setState(() {
       _messages.add({'role': 'user', 'text': userText});
-      _messages.add({'role': 'assistant', 'text': '...'}); // Placeholder
+      _messages.add({'role': 'assistant', 'text': ''}); // Placeholder para el streaming
     });
     _textController.clear();
 
+    final buffer = StringBuffer();
     try {
-      // Enviar el mensaje del usuario al chat
-      await _chat!.addQueryChunk(Message.text(text: userText, isUser: true));
-      // Generar la respuesta
-      final response = await _chat!.generateChatResponse();
       
-      setState(() {
-        _messages.last['text'] = response;
-      });
+      final stream = _llamaController.generate(
+        prompt: userText,
+        maxTokens: 150,
+        temperature: 0.7,
+      );
+
+      await for (final token in stream) {
+        buffer.write(token);
+        setState(() {
+          _messages.last['text'] = buffer.toString();
+        });
+      }
     } catch (e) {
       setState(() {
         _messages.last['text'] = 'Error al generar: $e';
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _llamaController.dispose();
+    _textController.dispose();
+    super.dispose();
   }
 
   @override
